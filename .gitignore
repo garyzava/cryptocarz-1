@@ -1,0 +1,5 @@
+/node_modules
+/coverage
+/coverageEnv
+/coverage.json
+Unified.sol

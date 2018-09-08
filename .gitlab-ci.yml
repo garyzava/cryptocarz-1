@@ -1,0 +1,36 @@
+image: docker
+
+services:
+  - docker:dind
+
+variables:
+  DOCKER_DRIVER: overlay2
+
+stages:
+  - build
+  - test
+
+before_script:
+  - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
+
+build:
+  stage: build
+  script:
+    - docker pull $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG || true
+    - cd $CI_PROJECT_DIR
+    - docker build . -t $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG --cache-from $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG --cache-from $CI_REGISTRY_IMAGE
+    - docker push $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG
+
+test_unit:
+  stage: test
+  script:
+    - docker run --rm $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG bash scripts/test.sh
+
+solidity_coverage:
+  stage: test
+  script:
+    - docker run --rm --volume $CI_PROJECT_DIR/coverage:/code/truffle/coverage $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG bash scripts/coverage.sh
+  coverage: '/All files[ |]+[0-9.]+[ |]+([0-9.]+)/'
+  artifacts:
+    paths:
+      - coverage/
